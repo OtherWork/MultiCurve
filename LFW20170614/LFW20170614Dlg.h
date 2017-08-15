@@ -34,6 +34,10 @@ protected:
     SOCKET mServerSock; //模拟服务器(下位机).----正式版本需在删除掉
 
     int mOffsetX;
+    int mLastOffsetX;
+    BOOL mIsCapture;
+    CPoint mLastPoint;
+    void drawXY(CDC *pDC, int width, int height, int xUnits, int yUnits, int offsetX);
     void drawCurve();
 
 private:
@@ -137,6 +141,7 @@ public:
     //afx_msg void OnBnClickedButton8();
     afx_msg void OnStnClickedStatic1();
     afx_msg void OnDestroy();
+
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);

@@ -65,6 +65,8 @@ CLFW20170614Dlg::CLFW20170614Dlg(CWnd* pParent /*=NULL*/)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
     mOffsetX = 0;
+    mLastOffsetX = 0;
+    mIsCapture = FALSE;
 }
 
 void CLFW20170614Dlg::DoDataExchange(CDataExchange* pDX)
@@ -519,8 +521,8 @@ void CLFW20170614Dlg::onConnect(BOOL bSuccess)
 {
     if(bSuccess == FALSE)
     {
-        MessageBox(TEXT("连接服务器失败!!! 程序将自动退出"));
-        PostMessage(WM_CLOSE);
+        //MessageBox(TEXT("连接服务器失败!!! 程序将自动退出"));
+        //PostMessage(WM_CLOSE);
     }
 }
 
@@ -579,6 +581,63 @@ void CLFW20170614Dlg::OnDestroy()
 
 
 
+/**
+* Method:    drawXY
+* FullName:  CLFW20170614Dlg::drawXY
+* Access:    protected
+* Qualifier:
+* @param: CDC * pDC
+* @param: int width 绘制区域宽度
+* @param: int height 绘制区域高度
+* @param: int xUnits  横坐标总单位数(分成多少格)
+* @param: int yUnits 纵坐标总单位数(分成格数)
+* @param: int offsetX x方向偏移
+* @returns:   void
+*/
+void CLFW20170614Dlg::drawXY(CDC *pDC, int width, int height, int xUnits, int yUnits, int offsetX)
+{
+    int orginOffset = 20;
+    int margin = 5;
+
+    //绘制横纵坐标线
+    pDC->MoveTo(orginOffset, margin);
+    pDC->LineTo(orginOffset, height - orginOffset - margin);
+    pDC->LineTo(width - margin, height - orginOffset - margin);
+
+    //绘制横向箭头.
+    pDC->MoveTo(width - margin - margin, height - orginOffset - margin - margin);
+    pDC->LineTo(width - margin, height - orginOffset - margin);
+    pDC->LineTo(width - margin - margin, height - orginOffset);
+
+    //绘制纵坐标箭头
+    pDC->MoveTo(orginOffset - margin, margin + margin);
+    pDC->LineTo(orginOffset, margin);
+    pDC->LineTo(orginOffset + margin, margin + margin);
+
+    width -= orginOffset + margin;
+    height -= orginOffset + margin;
+
+    xUnits = min(xUnits, width);
+    yUnits  = min(yUnits, height);
+    //计算每个单位需要的像素.
+    double xPixel = (double)width / (double)xUnits;
+    double yPixel = (double)height / (double)yUnits;
+
+    //绘制x方向
+    for(int x = 1; x < xUnits; ++x)
+    {
+        pDC->MoveTo(x * xPixel + 0.5f + orginOffset, height);
+        pDC->LineTo(x * xPixel + 0.5f + orginOffset, height - margin);
+    }
+
+    //绘制y方向
+    for(int y = 1; y < yUnits; ++y)
+    {
+        pDC->MoveTo(orginOffset, margin + height - (y * yPixel + 0.5f));
+        pDC->LineTo(orginOffset + margin, margin + height - (y * yPixel + 0.5f));
+    }
+
+}
 
 
 void CLFW20170614Dlg::drawCurve()
@@ -587,17 +646,34 @@ void CLFW20170614Dlg::drawCurve()
     CRect rcWnd;
     pWnd->GetClientRect(&rcWnd);
     CDC *pDC = pWnd -> GetDC();
+
+    CDC cdc;
+    cdc.CreateCompatibleDC(pDC);
+
+    CBitmap bmp;
+    bmp.CreateCompatibleBitmap(pDC, rcWnd.Width(), rcWnd.Height());
+    CBitmap *pOld = cdc.SelectObject(&bmp);
+    //绘制背景
+    cdc.FillSolidRect(0, 0, rcWnd.Width(), rcWnd.Height(), RGB(0xF0, 0xF0, 0xF0));
+
+    //绘制坐标
+    drawXY(&cdc , rcWnd.Width(), rcWnd.Height(), 100, 50);
+
+    //绘制曲线
     CCurve cu;
     cu.setParam(rcWnd.Width(), rcWnd.Height(), 10, 0, 200, 0xFFFF0000);
 
     srand(GetTickCount());
     for(int i = 0; i < 400; ++i)
     {
-        //cu.add(rand() % 200);
         cu.add(i + 2);
     }
 
-    cu.DrawCure(pDC, mOffsetX);
+    cu.DrawCure(&cdc, mOffsetX);
+
+    pDC->BitBlt(0, 0, rcWnd.Width(), rcWnd.Height(), &cdc, 0, 0, SRCCOPY);
+
+    cdc.SelectObject(pOld);
 
     pWnd->ReleaseDC(pDC);
 }
@@ -606,7 +682,17 @@ void CLFW20170614Dlg::drawCurve()
 void CLFW20170614Dlg::OnLButtonDown(UINT nFlags, CPoint point)
 {
     // TODO: 在此添加消息处理程序代码和/或调用默认值
-
+    CWnd *pWnd = GetDlgItem(IDC_STATIC_CURVE);
+    CRect rcWnd;
+    pWnd->GetWindowRect(&rcWnd);
+    ScreenToClient(&rcWnd);
+    if(rcWnd.PtInRect(point))
+    {
+        mIsCapture = TRUE;
+        mLastPoint = point;
+        mLastOffsetX = mOffsetX;
+        SetCapture();
+    }
     __super::OnLButtonDown(nFlags, point);
 }
 
@@ -614,7 +700,11 @@ void CLFW20170614Dlg::OnLButtonDown(UINT nFlags, CPoint point)
 void CLFW20170614Dlg::OnLButtonUp(UINT nFlags, CPoint point)
 {
     // TODO: 在此添加消息处理程序代码和/或调用默认值
-
+    if(mIsCapture)
+    {
+        mIsCapture = FALSE;
+        ReleaseCapture();
+    }
     __super::OnLButtonUp(nFlags, point);
 }
 
@@ -622,6 +712,10 @@ void CLFW20170614Dlg::OnLButtonUp(UINT nFlags, CPoint point)
 void CLFW20170614Dlg::OnMouseMove(UINT nFlags, CPoint point)
 {
     // TODO: 在此添加消息处理程序代码和/或调用默认值
-
+    if(mIsCapture)
+    {
+        mOffsetX =  mLastOffsetX + mLastPoint.x - point.x;
+        drawCurve();
+    }
     __super::OnMouseMove(nFlags, point);
 }
