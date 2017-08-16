@@ -596,7 +596,7 @@ void CLFW20170614Dlg::OnDestroy()
 */
 void CLFW20170614Dlg::drawXY(CDC *pDC, int width, int height, int xUnits, int yUnits, int offsetX)
 {
-    int orginOffset = 20;
+    int orginOffset = 30;
     int margin = 5;
 
     //绘制横纵坐标线
@@ -617,24 +617,59 @@ void CLFW20170614Dlg::drawXY(CDC *pDC, int width, int height, int xUnits, int yU
     width -= orginOffset + margin;
     height -= orginOffset + margin;
 
-    xUnits = min(xUnits, width);
-    yUnits  = min(yUnits, height);
-    //计算每个单位需要的像素.
-    double xPixel = (double)width / (double)xUnits;
-    double yPixel = (double)height / (double)yUnits;
 
-    //绘制x方向
-    for(int x = 1; x < xUnits; ++x)
+    pDC->SetBkMode(TRANSPARENT);
+    //绘制x方向---每10个像素为100ms
+    for(int x = 10 + offsetX; x < width - offsetX; x += 10)
     {
-        pDC->MoveTo(x * xPixel + 0.5f + orginOffset, height);
-        pDC->LineTo(x * xPixel + 0.5f + orginOffset, height - margin);
+        int addx = (((x - offsetX) % 100) == 0) ? margin : 0;
+        if(x  + orginOffset < orginOffset)
+        {
+            continue;
+        }
+        pDC->MoveTo(x + orginOffset , height);
+        pDC->LineTo(x + orginOffset, height - margin - addx);
+
+        if(addx > 0)
+        {
+            CString tStr;
+            tStr.Format(TEXT("%d"), (x - offsetX) / 10);
+            CRect rcArea ;
+            pDC->DrawText(tStr, &rcArea, DT_CENTER | DT_CALCRECT);
+            rcArea.OffsetRect(x + orginOffset - rcArea.Width() / 2, height);
+            pDC->DrawText(tStr, &rcArea, DT_CENTER);
+        }
+
     }
 
-    //绘制y方向
-    for(int y = 1; y < yUnits; ++y)
+    int val = yUnits - xUnits;
+    if(val == 0)
     {
-        pDC->MoveTo(orginOffset, margin + height - (y * yPixel + 0.5f));
-        pDC->LineTo(orginOffset + margin, margin + height - (y * yPixel + 0.5f));
+        val = 1;
+    }
+    if(val > height)
+    {
+        val = height;
+    }
+
+    double perPixel = (double)val / (double)height;
+
+    //绘制y方向----根据最大值,最小值计算单位
+    for(int y = 10; y < height; y += 10)
+    {
+        int addy = ((y % 100) == 0) ? margin : 0;
+        pDC->MoveTo(orginOffset,  height - y);
+        pDC->LineTo(orginOffset + margin + addy, height - y);
+
+        if(addy > 0)
+        {
+            CString tStr;
+            tStr.Format(TEXT("%d"), (int)(y * perPixel));
+            CRect rcArea ;
+            pDC->DrawText(tStr, &rcArea, DT_CENTER | DT_CALCRECT);
+            rcArea.OffsetRect(orginOffset - rcArea.Width(), height - y - rcArea.Height() / 2);
+            pDC->DrawText(tStr, &rcArea, DT_CENTER);
+        }
     }
 
 }
@@ -657,7 +692,7 @@ void CLFW20170614Dlg::drawCurve()
     cdc.FillSolidRect(0, 0, rcWnd.Width(), rcWnd.Height(), RGB(0xF0, 0xF0, 0xF0));
 
     //绘制坐标
-    drawXY(&cdc , rcWnd.Width(), rcWnd.Height(), 100, 50);
+    drawXY(&cdc , rcWnd.Width(), rcWnd.Height(), 0, 200, mOffsetX);
 
     //绘制曲线
     CCurve cu;
@@ -714,7 +749,11 @@ void CLFW20170614Dlg::OnMouseMove(UINT nFlags, CPoint point)
     // TODO: 在此添加消息处理程序代码和/或调用默认值
     if(mIsCapture)
     {
-        mOffsetX =  mLastOffsetX + mLastPoint.x - point.x;
+        mOffsetX =  mLastOffsetX +  point.x - mLastPoint.x ;
+        if(mOffsetX > 0)
+        {
+            mOffsetX = 0;
+        }
         drawCurve();
     }
     __super::OnMouseMove(nFlags, point);

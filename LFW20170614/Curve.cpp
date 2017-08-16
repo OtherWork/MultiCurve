@@ -37,6 +37,7 @@ void CCurve::clear()
 
 void CCurve::DrawCure(CDC *pDC, int offsetX)
 {
+    int originOffset = 30;
     int len = mDatas.size();
     if(len == 0)
     {
@@ -44,21 +45,11 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
     }
 
     Graphics gp(pDC->m_hDC);
-    Color clr(mColor);
+    Color clr((mColor & 0x00FFFFFF) | 0xee000000);
     Pen pen(clr); //坐标点颜色
 
     gp.SetSmoothingMode(SmoothingModeHighQuality); //平滑模式
 
-
-    //修正offsetX.
-    if(len * mSpaceWidth + offsetX < mWidth) //
-    {
-        offsetX = mWidth - len * mSpaceWidth;
-    }
-    if(offsetX > 0)
-    {
-        offsetX = 0;
-    }
 
     //根据offsetX来计算需要显示的点,  优化显示速度
     int startIndex = 0;
@@ -75,15 +66,25 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
 
     SolidBrush brush(clr);
     len = len - startIndex;
-    Point *pPts = new Point[len];
+    vector<Point> pts;
     for(int i = 0; i < len; ++i)
     {
-        pPts[i].X = i * mSpaceWidth + offsetX;
-        pPts[i].Y = mHeight - mDatas[i + startIndex] / range * mHeight; //根据值区间宽度比例,换算成坐标
-        gp.FillEllipse(&brush, pPts[i].X - 2, pPts[i].Y - 2, 4, 4);
-    }
-    //绘制曲线函数
-    gp.DrawCurve(&pen, pPts, len, 1.0f);
+        Point pt;
+        pt.X = i * mSpaceWidth + offsetX + originOffset;
+        pt.Y = mHeight - mDatas[i + startIndex] / range * mHeight - originOffset - 1; //根据值区间宽度比例,换算成坐标
+        if(pt.X < originOffset)
+        {
+            continue;
+        }
+        else
+        {
+            gp.FillEllipse(&brush, pt.X - 2, pt.Y - 2, 4, 4);
+        }
+        pts.push_back(pt);
 
-    delete[] pPts;
+    }
+
+    //绘制曲线函数
+    gp.DrawCurve(&pen, pts.data(), pts.size(), 1.0f);
+
 }

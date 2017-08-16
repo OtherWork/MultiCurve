@@ -55,3 +55,5 @@ BOOL CCurveFileSaver::createFile()
     _tfopen_s(&mpFile, strFilePath, TEXT("wb"));
     return mpFile != NULL;
 }
+
+
