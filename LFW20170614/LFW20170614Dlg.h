@@ -5,6 +5,8 @@
 #pragma once
 #include "afxwin.h"
 #include "ClientTCP.h"
+#include "Curve.h"
+#include "CurveFileSaver.h"
 
 // CLFW20170614Dlg 对话框
 class CLFW20170614Dlg : public CDialogEx, public OnClientListener
@@ -39,6 +41,9 @@ protected:
     CPoint mLastPoint;
     void drawXY(CDC *pDC, int width, int height, int xUnits, int yUnits, int offsetX);
     void drawCurve();
+
+    CCurve mCurves[3];//三条曲线
+    CCurveFileSaver mSavers[3];
 
 private:
     CFont m_Font;
@@ -141,6 +146,8 @@ public:
     //afx_msg void OnBnClickedButton8();
     afx_msg void OnStnClickedStatic1();
     afx_msg void OnDestroy();
+
+    afx_msg LRESULT OnMyUpdateUI(WPARAM wParam, LPARAM lParam);
 
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);

@@ -21,7 +21,9 @@
 #endif
 
 
+//#define WM_UPDATE_UI  (WM_USER+10)
 
+const int WM_UPDATE_UI = WM_USER + 10;
 
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
@@ -166,6 +168,7 @@ BEGIN_MESSAGE_MAP(CLFW20170614Dlg, CDialogEx)
     ON_WM_LBUTTONDOWN()
     ON_WM_LBUTTONUP()
     ON_WM_MOUSEMOVE()
+    ON_MESSAGE(WM_UPDATE_UI, &CLFW20170614Dlg::OnMyUpdateUI)
 END_MESSAGE_MAP()
 
 
@@ -366,6 +369,7 @@ BOOL CLFW20170614Dlg::OnInitDialog()
     SetDlgItemText(IDC_EDIT_SEND, TEXT("45.875")); //初始化发送编辑框数值.
 
 
+
 #ifdef RUN_TEST_SERVER
     //启动模拟服务器
     //////////////////////////////////////////////////////////////////////////
@@ -385,6 +389,16 @@ BOOL CLFW20170614Dlg::OnInitDialog()
     mClient.start(); //启动数据接收线程
 
 
+    CWnd *pWnd = GetDlgItem(IDC_STATIC_CURVE);
+    CRect rcWnd;
+    pWnd->GetClientRect(&rcWnd);
+    int colors[3] = {0xFFEE3932, 0xFFED23F3, 0xFF347C24}; //三条线的颜色
+    CString fileName[3] = {TEXT("acc"), TEXT("VibraForce"), TEXT("longPress")};
+    for(int i = 0; i < 3; ++i)
+    {
+        mCurves[i].setParam(rcWnd.Width(), rcWnd.Height(), 20, 0, 200, colors[i]);
+        mSavers[i].setFileName(fileName[i]);
+    }
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -446,7 +460,7 @@ HCURSOR CLFW20170614Dlg::OnQueryDragIcon()
 
 
 
-HBRUSH CLFW20170614Dlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+HBRUSH CLFW20170614Dlg::OnCtlColor(CDC * pDC, CWnd * pWnd, UINT nCtlColor)
 {
     HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
 
@@ -533,17 +547,24 @@ void CLFW20170614Dlg::onRecv(const char *pBuf, int len)
     float val1 = *(float*)pBuf;
     float val2 = *(float*)&pBuf[5];
     float val3 = *(float*)&pBuf[10];
+    float vals[3] = {0};
+    int ids[3] = {IDC_EDIT_VAL1, IDC_EDIT_VAL2, IDC_EDIT_VAL3};
+    for(int i = 0; i < 3; ++i)
+    {
+        vals[i] = *(float*)&pBuf[i * 5];
 
-    //分别把三个符点数显示到编辑框中.
-    CString tStr;
-    tStr.Format(TEXT("%.02f"), val1);
-    SetDlgItemText(IDC_EDIT_VAL1, tStr);
+        mCurves[i].add(vals[i]);
+        mSavers[i].saveData(vals[i]);
 
-    tStr.Format(TEXT("%.02f"), val2);
-    SetDlgItemText(IDC_EDIT_VAL2, tStr);
+        //分别把三个符点数显示到编辑框中.
+        CString tStr;
+        tStr.Format(TEXT("%.02f"), vals[i]);
+        SetDlgItemText(ids[i], tStr);
+    }
 
-    tStr.Format(TEXT("%.02f"), val3);
-    SetDlgItemText(IDC_EDIT_VAL3, tStr);
+    //mOffsetX -= 10;
+    PostMessage(WM_UPDATE_UI);
+
 }
 
 //断开连接事件
@@ -581,6 +602,12 @@ void CLFW20170614Dlg::OnDestroy()
 
 
 
+LRESULT CLFW20170614Dlg::OnMyUpdateUI(WPARAM wParam, LPARAM lParam)
+{
+    drawCurve();
+    return 0;
+}
+
 /**
 * Method:    drawXY
 * FullName:  CLFW20170614Dlg::drawXY
@@ -594,7 +621,7 @@ void CLFW20170614Dlg::OnDestroy()
 * @param: int offsetX x方向偏移
 * @returns:   void
 */
-void CLFW20170614Dlg::drawXY(CDC *pDC, int width, int height, int xUnits, int yUnits, int offsetX)
+void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int yUnits, int offsetX)
 {
     int orginOffset = 30;
     int margin = 5;
@@ -691,20 +718,14 @@ void CLFW20170614Dlg::drawCurve()
     //绘制背景
     cdc.FillSolidRect(0, 0, rcWnd.Width(), rcWnd.Height(), RGB(0xF0, 0xF0, 0xF0));
 
-    //绘制坐标
+    //绘制坐标系
     drawXY(&cdc , rcWnd.Width(), rcWnd.Height(), 0, 200, mOffsetX);
 
     //绘制曲线
-    CCurve cu;
-    cu.setParam(rcWnd.Width(), rcWnd.Height(), 10, 0, 200, 0xFFFF0000);
-
-    srand(GetTickCount());
-    for(int i = 0; i < 400; ++i)
+    for(int i = 0; i < 3; ++i)
     {
-        cu.add(i + 2);
+        mCurves[i].DrawCure(&cdc, mOffsetX);
     }
-
-    cu.DrawCure(&cdc, mOffsetX);
 
     pDC->BitBlt(0, 0, rcWnd.Width(), rcWnd.Height(), &cdc, 0, 0, SRCCOPY);
 

@@ -73,11 +73,11 @@ void CTheadSend::run()
     srand(GetTickCount());
     while(mIsRun)
     {
-        *(float*)&buf[0] = rand();
+        *(float*)&buf[0] = (rand() % 80) + 10;
         buf[4] = ',';
-        *(float*)&buf[5] = rand();
+        *(float*)&buf[5] = (rand() % 80) + 80;
         buf[9] = ',';
-        *(float*)&buf[10] = rand();
+        *(float*)&buf[10] = (rand() % 80) + 120;
         ret = sock.send(buf, 14);
         if(ret < 1)
         {

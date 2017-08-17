@@ -63,6 +63,8 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
     }
 
     double range = mRangeMax - mRangeMin; //计算值区间宽度
+    int maxPtCount = mWidth / mSpaceWidth + 2;
+
 
     SolidBrush brush(clr);
     len = len - startIndex;
