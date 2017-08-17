@@ -9,7 +9,7 @@
 
 //定义这个宏,则会运行模拟下位机TCP服务器, 否则不运行.
 //不需要是注释此行, 需要是放开此行代码
-//#define RUN_TEST_SERVER
+#define RUN_TEST_SERVER
 
 #ifdef RUN_TEST_SERVER
 #include "ServerTCP.h"

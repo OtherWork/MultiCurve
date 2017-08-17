@@ -64,15 +64,16 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
 
     double range = mRangeMax - mRangeMin; //计算值区间宽度
     int maxPtCount = mWidth / mSpaceWidth + 2;
-
+    len -= startIndex;
+    maxPtCount = min(len, maxPtCount);
 
     SolidBrush brush(clr);
-    len = len - startIndex;
+
     vector<Point> pts;
-    for(int i = 0; i < len; ++i)
+    for(int i = 0; i < maxPtCount; ++i)
     {
         Point pt;
-        pt.X = i * mSpaceWidth + offsetX + originOffset;
+        pt.X = (i + startIndex) * mSpaceWidth + offsetX + originOffset;
         pt.Y = mHeight - mDatas[i + startIndex] / range * mHeight - originOffset - 1; //根据值区间宽度比例,换算成坐标
         if(pt.X < originOffset)
         {
