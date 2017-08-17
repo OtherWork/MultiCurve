@@ -42,7 +42,8 @@ protected:
     void drawXY(CDC *pDC, int width, int height, int xUnits, int yUnits, int offsetX);
     void drawCurve();
 
-    CCurve mCurves[3];//三条曲线
+    CCurve mCurves[3];//三条动态曲线
+    CCurve mStaticCurves[3];//三条静态曲线;
     CCurveFileSaver mSavers[3];
 
 private:
@@ -152,4 +153,6 @@ public:
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+    afx_msg void OnBnClickedShowstatic();
+    afx_msg void OnBnClickedButton8();
 };

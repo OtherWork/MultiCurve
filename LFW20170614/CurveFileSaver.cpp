@@ -47,6 +47,11 @@ BOOL CCurveFileSaver::createFile()
     {
         strFilePath = strFilePath.Left(index + 1);
     }
+    strFilePath += TEXT("data\\");
+    if(0 != _taccess(strFilePath, 0))
+    {
+        CreateDirectory(strFilePath, NULL);
+    }
     SYSTEMTIME st = {0};
     GetLocalTime(&st);
     CString tStr;

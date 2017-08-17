@@ -17,6 +17,7 @@ public:
     ~CCurve(void);
     vector<double> mDatas;
 
+    void replace(vector<double>&datas);
 
     /**
     *

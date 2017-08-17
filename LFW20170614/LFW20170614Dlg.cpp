@@ -9,12 +9,13 @@
 
 //定义这个宏,则会运行模拟下位机TCP服务器, 否则不运行.
 //不需要是注释此行, 需要是放开此行代码
-#define RUN_TEST_SERVER
+//#define RUN_TEST_SERVER
 
 #ifdef RUN_TEST_SERVER
 #include "ServerTCP.h"
 #endif
 #include "Curve.h"
+#include "CurveFileLoader.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -24,6 +25,8 @@
 //#define WM_UPDATE_UI  (WM_USER+10)
 
 const int WM_UPDATE_UI = WM_USER + 10;
+
+#define  SPACE_WIDTH  20
 
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
@@ -169,6 +172,8 @@ BEGIN_MESSAGE_MAP(CLFW20170614Dlg, CDialogEx)
     ON_WM_LBUTTONUP()
     ON_WM_MOUSEMOVE()
     ON_MESSAGE(WM_UPDATE_UI, &CLFW20170614Dlg::OnMyUpdateUI)
+    ON_BN_CLICKED(IDC_ShowStatic, &CLFW20170614Dlg::OnBnClickedShowstatic)
+    ON_BN_CLICKED(IDC_BUTTON8, &CLFW20170614Dlg::OnBnClickedButton8)
 END_MESSAGE_MAP()
 
 
@@ -396,7 +401,8 @@ BOOL CLFW20170614Dlg::OnInitDialog()
     CString fileName[3] = {TEXT("acc"), TEXT("VibraForce"), TEXT("longPress")};
     for(int i = 0; i < 3; ++i)
     {
-        mCurves[i].setParam(rcWnd.Width(), rcWnd.Height(), 20, 0, 200, colors[i]);
+        mCurves[i].setParam(rcWnd.Width(), rcWnd.Height(), SPACE_WIDTH, 0, 200, colors[i]);
+        mStaticCurves[i].setParam(rcWnd.Width(), rcWnd.Height(), SPACE_WIDTH, 0, 200, colors[i]);
         mSavers[i].setFileName(fileName[i]);
     }
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -604,7 +610,17 @@ void CLFW20170614Dlg::OnDestroy()
 
 LRESULT CLFW20170614Dlg::OnMyUpdateUI(WPARAM wParam, LPARAM lParam)
 {
-    drawCurve();
+    if(BST_CHECKED != IsDlgButtonChecked(IDC_ShowStatic))
+    {
+        int len = mCurves[0].mDatas.size();
+        CRect rcWnd;
+        GetDlgItem(IDC_STATIC_CURVE)->GetWindowRect(&rcWnd);
+        if(len * SPACE_WIDTH > rcWnd.Width())
+        {
+            mOffsetX -= SPACE_WIDTH;
+        }
+        drawCurve();
+    }
     return 0;
 }
 
@@ -623,26 +639,27 @@ LRESULT CLFW20170614Dlg::OnMyUpdateUI(WPARAM wParam, LPARAM lParam)
 */
 void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int yUnits, int offsetX)
 {
-    int orginOffset = 30;
+    int orginOffsetX = 30;
+    int orginOffsetY = 10;
     int margin = 5;
 
     //绘制横纵坐标线
-    pDC->MoveTo(orginOffset, margin);
-    pDC->LineTo(orginOffset, height - orginOffset - margin);
-    pDC->LineTo(width - margin, height - orginOffset - margin);
+    pDC->MoveTo(orginOffsetX, margin);
+    pDC->LineTo(orginOffsetX, height - orginOffsetY - margin);
+    pDC->LineTo(width - margin, height - orginOffsetY - margin);
 
     //绘制横向箭头.
-    pDC->MoveTo(width - margin - margin, height - orginOffset - margin - margin);
-    pDC->LineTo(width - margin, height - orginOffset - margin);
-    pDC->LineTo(width - margin - margin, height - orginOffset);
+    pDC->MoveTo(width - margin - margin, height - orginOffsetY - margin - margin);
+    pDC->LineTo(width - margin, height - orginOffsetY - margin);
+    pDC->LineTo(width - margin - margin, height - orginOffsetY);
 
     //绘制纵坐标箭头
-    pDC->MoveTo(orginOffset - margin, margin + margin);
-    pDC->LineTo(orginOffset, margin);
-    pDC->LineTo(orginOffset + margin, margin + margin);
+    pDC->MoveTo(orginOffsetX - margin, margin + margin);
+    pDC->LineTo(orginOffsetX, margin);
+    pDC->LineTo(orginOffsetX + margin, margin + margin);
 
-    width -= orginOffset + margin;
-    height -= orginOffset + margin;
+    width -= orginOffsetX + margin;
+    height -= orginOffsetY + margin;
 
 
     pDC->SetBkMode(TRANSPARENT);
@@ -650,12 +667,12 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
     for(int x = 10 + offsetX; x < width - offsetX; x += 10)
     {
         int addx = (((x - offsetX) % 100) == 0) ? margin : 0;
-        if(x  + orginOffset < orginOffset)
+        if(x  + orginOffsetX < orginOffsetX)
         {
             continue;
         }
-        pDC->MoveTo(x + orginOffset , height);
-        pDC->LineTo(x + orginOffset, height - margin - addx);
+        pDC->MoveTo(x + orginOffsetX , height);
+        pDC->LineTo(x + orginOffsetX, height - margin - addx);
 
         if(addx > 0)
         {
@@ -663,7 +680,7 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
             tStr.Format(TEXT("%d"), (x - offsetX) / 10);
             CRect rcArea ;
             pDC->DrawText(tStr, &rcArea, DT_CENTER | DT_CALCRECT);
-            rcArea.OffsetRect(x + orginOffset - rcArea.Width() / 2, height);
+            rcArea.OffsetRect(x + orginOffsetX - rcArea.Width() / 2, height);
             pDC->DrawText(tStr, &rcArea, DT_CENTER);
         }
 
@@ -685,8 +702,8 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
     for(int y = 10; y < height; y += 10)
     {
         int addy = ((y % 100) == 0) ? margin : 0;
-        pDC->MoveTo(orginOffset,  height - y);
-        pDC->LineTo(orginOffset + margin + addy, height - y);
+        pDC->MoveTo(orginOffsetX,  height - y);
+        pDC->LineTo(orginOffsetX + margin + addy, height - y);
 
         if(addy > 0)
         {
@@ -694,7 +711,7 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
             tStr.Format(TEXT("%d"), (int)(y * perPixel));
             CRect rcArea ;
             pDC->DrawText(tStr, &rcArea, DT_CENTER | DT_CALCRECT);
-            rcArea.OffsetRect(orginOffset - rcArea.Width(), height - y - rcArea.Height() / 2);
+            rcArea.OffsetRect(orginOffsetX - rcArea.Width(), height - y - rcArea.Height() / 2);
             pDC->DrawText(tStr, &rcArea, DT_CENTER);
         }
     }
@@ -721,10 +738,18 @@ void CLFW20170614Dlg::drawCurve()
     //绘制坐标系
     drawXY(&cdc , rcWnd.Width(), rcWnd.Height(), 0, 200, mOffsetX);
 
+    BOOL isShowStatic  = BST_CHECKED == IsDlgButtonChecked(IDC_ShowStatic);
     //绘制曲线
     for(int i = 0; i < 3; ++i)
     {
-        mCurves[i].DrawCure(&cdc, mOffsetX);
+        if(isShowStatic) //静态曲线
+        {
+            mStaticCurves[i].DrawCure(&cdc, mOffsetX);
+        }
+        else //动态曲线
+        {
+            mCurves[i].DrawCure(&cdc, mOffsetX);
+        }
     }
 
     pDC->BitBlt(0, 0, rcWnd.Width(), rcWnd.Height(), &cdc, 0, 0, SRCCOPY);
@@ -778,4 +803,42 @@ void CLFW20170614Dlg::OnMouseMove(UINT nFlags, CPoint point)
         drawCurve();
     }
     __super::OnMouseMove(nFlags, point);
+}
+
+
+void CLFW20170614Dlg::OnBnClickedShowstatic()
+{
+    // TODO: 在此添加控件通知处理程序代码
+    drawCurve();
+}
+
+
+//加载静态图
+void CLFW20170614Dlg::OnBnClickedButton8()
+{
+    CString strTime;
+    GetDlgItemText(IDC_EDIT_TIME, strTime);
+    if(strTime.IsEmpty())
+    {
+        MessageBox(TEXT("请输入时间"));
+        return;
+    }
+    vector<vector<double>> datas;
+    if(CCurveFileLoader::load(datas, strTime))
+    {
+        mOffsetX = 0;
+        int curveSize = sizeof(mStaticCurves) / sizeof(CCurve);
+        int nCount = datas.size();
+        nCount = min(curveSize, nCount);
+        for(int i = 0; i < nCount; ++i)
+        {
+            mStaticCurves[i].replace(datas[i]);
+        }
+        drawCurve();
+    }
+    else
+    {
+        MessageBox(TEXT("未找到数据文件"));
+    }
+
 }

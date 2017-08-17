@@ -108,6 +108,7 @@
   <ItemGroup>
     <ClInclude Include="ClientTCP.h" />
     <ClInclude Include="Curve.h" />
+    <ClInclude Include="CurveFileLoader.h" />
     <ClInclude Include="CurveFileSaver.h" />
     <ClInclude Include="LFW20170614.h" />
     <ClInclude Include="LFW20170614Dlg.h" />
@@ -122,6 +123,7 @@
   <ItemGroup>
     <ClCompile Include="ClientTCP.cpp" />
     <ClCompile Include="Curve.cpp" />
+    <ClCompile Include="CurveFileLoader.cpp" />
     <ClCompile Include="CurveFileSaver.cpp" />
     <ClCompile Include="LFW20170614.cpp" />
     <ClCompile Include="LFW20170614Dlg.cpp" />

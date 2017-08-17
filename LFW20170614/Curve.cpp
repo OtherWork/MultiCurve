@@ -13,6 +13,12 @@ CCurve::~CCurve(void)
 }
 
 
+void CCurve::replace(vector<double>&datas)
+{
+    mDatas.clear();
+    mDatas = datas;
+}
+
 void CCurve::setParam(int width, int height, int spaceWidth, double minVal, double maxVal, int color)
 {
     mWidth = width;
@@ -37,7 +43,8 @@ void CCurve::clear()
 
 void CCurve::DrawCure(CDC *pDC, int offsetX)
 {
-    int originOffset = 30;
+    int originOffsetX = 30;
+    int originOffsetY = 10;
     int len = mDatas.size();
     if(len == 0)
     {
@@ -73,9 +80,9 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
     for(int i = 0; i < maxPtCount; ++i)
     {
         Point pt;
-        pt.X = (i + startIndex) * mSpaceWidth + offsetX + originOffset;
-        pt.Y = mHeight - mDatas[i + startIndex] / range * mHeight - originOffset - 1; //根据值区间宽度比例,换算成坐标
-        if(pt.X < originOffset)
+        pt.X = (i + startIndex) * mSpaceWidth + offsetX + originOffsetX;
+        pt.Y = mHeight - mDatas[i + startIndex] / range * mHeight - originOffsetY - 1; //根据值区间宽度比例,换算成坐标
+        if(pt.X < originOffsetX)
         {
             continue;
         }
