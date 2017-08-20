@@ -212,6 +212,34 @@ BOOL CLFW20170614Dlg::OnInitDialog()
     SetIcon(m_hIcon, TRUE);         // 设置大图标
     SetIcon(m_hIcon, FALSE);        // 设置小图标
 
+
+
+
+
+    SetDlgItemText(IDC_EDIT_SEND, TEXT("45.875")); //初始化发送编辑框数值.
+
+
+
+#ifdef RUN_TEST_SERVER
+    //启动模拟服务器
+    //////////////////////////////////////////////////////////////////////////
+
+    //正式版本需要删除掉
+    CServerTCP *pServer = new CServerTCP(8888); //创建模拟服务器封装类
+    mServerSock = pServer->getSock(); //保存其socket
+    pServer->start(); //启动线程
+    Sleep(300); //sleep是为了让服务器先完全启动起来, 方便后面连接
+    //*/
+    //////////////////////////////////////////////////////////////////////////
+#endif
+
+    //客户端
+    mClient.setListener(this); //设置事件监听器
+    mClient.setServer(TEXT("127.0.0.1"), 8888); //设置服务器IP和端口
+    mClient.start(); //启动数据接收线程
+
+    initCurve();
+
     // TODO: 在此添加额外的初始化代码
     m_Font.CreatePointFont(150, _T("宋体"), NULL);
     m_statc1.SetFont(&m_Font, true);
@@ -370,41 +398,6 @@ BOOL CLFW20170614Dlg::OnInitDialog()
     m_statc77.SetWindowTextW(_T("mm"));
 
 
-
-    SetDlgItemText(IDC_EDIT_SEND, TEXT("45.875")); //初始化发送编辑框数值.
-
-
-
-#ifdef RUN_TEST_SERVER
-    //启动模拟服务器
-    //////////////////////////////////////////////////////////////////////////
-
-    //正式版本需要删除掉
-    CServerTCP *pServer = new CServerTCP(8888); //创建模拟服务器封装类
-    mServerSock = pServer->getSock(); //保存其socket
-    pServer->start(); //启动线程
-    Sleep(300); //sleep是为了让服务器先完全启动起来, 方便后面连接
-    //*/
-    //////////////////////////////////////////////////////////////////////////
-#endif
-
-    //客户端
-    mClient.setListener(this); //设置事件监听器
-    mClient.setServer(TEXT("127.0.0.1"), 8888); //设置服务器IP和端口
-    mClient.start(); //启动数据接收线程
-
-
-    CWnd *pWnd = GetDlgItem(IDC_STATIC_CURVE);
-    CRect rcWnd;
-    pWnd->GetClientRect(&rcWnd);
-    int colors[3] = {0xFFEE3932, 0xFFED23F3, 0xFF347C24}; //三条线的颜色
-    CString fileName[3] = {TEXT("acc"), TEXT("VibraForce"), TEXT("longPress")};
-    for(int i = 0; i < 3; ++i)
-    {
-        mCurves[i].setParam(rcWnd.Width(), rcWnd.Height(), SPACE_WIDTH, 0, 200, colors[i]);
-        mStaticCurves[i].setParam(rcWnd.Width(), rcWnd.Height(), SPACE_WIDTH, 0, 200, colors[i]);
-        mSavers[i].setFileName(fileName[i]);
-    }
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -610,14 +603,21 @@ void CLFW20170614Dlg::OnDestroy()
 
 LRESULT CLFW20170614Dlg::OnMyUpdateUI(WPARAM wParam, LPARAM lParam)
 {
-    if(BST_CHECKED != IsDlgButtonChecked(IDC_ShowStatic))
+    if(BST_CHECKED != IsDlgButtonChecked(IDC_ShowStatic))// 不绘制静态曲线时, 才执行下面动态曲线绘制
     {
-        int len = mCurves[0].mDatas.size();
+        //计算曲线中最大需要宽度.
+        int maxNeedWidth = 0;
+        int pointWidth  = 0;
+        for(int i = 0; i < mCurves.size(); ++i)
+        {
+            maxNeedWidth = max(mCurves[i].getNeedWidth(pointWidth), maxNeedWidth);
+        }
         CRect rcWnd;
         GetDlgItem(IDC_STATIC_CURVE)->GetWindowRect(&rcWnd);
-        if(len * SPACE_WIDTH > rcWnd.Width())
+        //如果情态曲线中
+        if(maxNeedWidth > rcWnd.Width())
         {
-            mOffsetX -= SPACE_WIDTH;
+            mOffsetX -= pointWidth;
         }
         drawCurve();
     }
@@ -735,12 +735,15 @@ void CLFW20170614Dlg::drawCurve()
     //绘制背景
     cdc.FillSolidRect(0, 0, rcWnd.Width(), rcWnd.Height(), RGB(0xF0, 0xF0, 0xF0));
 
+
     //绘制坐标系
     drawXY(&cdc , rcWnd.Width(), rcWnd.Height(), 0, 200, mOffsetX);
 
     BOOL isShowStatic  = BST_CHECKED == IsDlgButtonChecked(IDC_ShowStatic);
+
+    int curveCount = isShowStatic ? mStaticCurves.size() : mCurves.size();
     //绘制曲线
-    for(int i = 0; i < 3; ++i)
+    for(int i = 0; i < curveCount; ++i)
     {
         if(isShowStatic) //静态曲线
         {
@@ -758,6 +761,8 @@ void CLFW20170614Dlg::drawCurve()
 
     pWnd->ReleaseDC(pDC);
 }
+
+
 
 
 void CLFW20170614Dlg::OnLButtonDown(UINT nFlags, CPoint point)
@@ -824,8 +829,13 @@ void CLFW20170614Dlg::OnBnClickedButton8()
         return;
     }
     vector<vector<double>> datas;
+    mStaticCurves.clear();
     if(CCurveFileLoader::load(datas, strTime))
     {
+        const int curveCount = 3;
+        int colors[curveCount] = {0xFFEE3932, 0xFFED23F3, 0xFF347C24}; //三条线的颜色
+        CCurve cure;
+        //文件名......
         mOffsetX = 0;
         int curveSize = sizeof(mStaticCurves) / sizeof(CCurve);
         int nCount = datas.size();
@@ -841,4 +851,28 @@ void CLFW20170614Dlg::OnBnClickedButton8()
         MessageBox(TEXT("未找到数据文件"));
     }
 
+}
+
+
+void CLFW20170614Dlg::initCurve()
+{
+    //每1一个像素表示10ms.
+
+    //初始化曲线参数
+    CWnd *pWnd = GetDlgItem(IDC_STATIC_CURVE);
+    CRect rcWnd;
+    pWnd->GetClientRect(&rcWnd);
+    //目前只有三条曲线.
+    const int curveCount = 3;
+    int colors[curveCount] = {0xFFEE3932, 0xFFED23F3, 0xFF347C24}; //三条线的颜色
+    CString fileName[curveCount] = {TEXT("acc"), TEXT("VibraForce"), TEXT("longPress")}; //三条曲线保存的文件名字
+    for(int i = 0; i < curveCount; ++i)
+    {
+        CCurve cure;
+        cure.setParam(fileName[i], rcWnd.Width(), rcWnd.Height(), 100, 0, 200, colors[i]);
+        mCurves.push_back(cure);
+        CCurveFileSaver saver;
+        saver.setFileName(fileName[i]);
+        mSavers.push_back(saver);
+    }
 }

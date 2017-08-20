@@ -4,7 +4,7 @@
 
 CCurve::CCurve(void)
 {
-    setParam(100, 100, 5, 0, 200, 0xFF000000);
+    setParam(TEXT(""), 100, 100, 100, 0, 200, 0xFF000000);
 }
 
 
@@ -19,15 +19,29 @@ void CCurve::replace(vector<double>&datas)
     mDatas = datas;
 }
 
-void CCurve::setParam(int width, int height, int spaceWidth, double minVal, double maxVal, int color)
+int CCurve::getColor()
+{
+    return mColor;
+}
+
+LPCTSTR CCurve::getName()
+{
+    return mName;
+}
+
+void CCurve::setParam(LPCTSTR strName, int width, int height, int sampleTimes, double minVal, double maxVal, int color)
 {
     mWidth = width;
     mHeight = height;
-    mSpaceWidth = spaceWidth;
+    mSpaceWidth = sampleTimes / PixelMili;
+    if(mSpaceWidth == 0)
+    {
+        mSpaceWidth = 1;
+    }
     mRangeMin = minVal;
     mRangeMax = maxVal;
     mColor  = color;
-
+    mName = strName;
 }
 
 
@@ -95,6 +109,13 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
     }
 
     //»æÖÆÇúÏßº¯Êý
-    gp.DrawCurve(&pen, pts.data(), pts.size(), 1.0f);
+    gp.DrawCurve(&pen, pts.data(), pts.size(), 0.3f);
 
 }
+
+int CCurve::getNeedWidth(int &pointWidth)
+{
+    pointWidth = mSpaceWidth;
+    return mDatas.size() * mSpaceWidth;
+}
+

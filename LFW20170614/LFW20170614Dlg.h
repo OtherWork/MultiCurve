@@ -42,9 +42,10 @@ protected:
     void drawXY(CDC *pDC, int width, int height, int xUnits, int yUnits, int offsetX);
     void drawCurve();
 
-    CCurve mCurves[3];//三条动态曲线
-    CCurve mStaticCurves[3];//三条静态曲线;
-    CCurveFileSaver mSavers[3];
+    vector<CCurve> mCurves;//三条动态曲线
+    vector<CCurve> mStaticCurves;//三条静态曲线;
+    vector<CCurveFileSaver> mSavers; //文件保存器
+    void initCurve();
 
 private:
     CFont m_Font;
