@@ -637,6 +637,7 @@ LRESULT CLFW20170614Dlg::OnMyUpdateUI(WPARAM wParam, LPARAM lParam)
 * @param: int offsetX x方向偏移
 * @returns:   void
 */
+//坐标系统根据多条曲线y方向范围最大值来计算刻度单位.   返回值可能需要写成 像素单位比值(小数). 在坐标右侧绘制图例
 void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int yUnits, int offsetX)
 {
     int orginOffsetX = 30;
@@ -721,6 +722,7 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
 
 void CLFW20170614Dlg::drawCurve()
 {
+
     CWnd *pWnd = GetDlgItem(IDC_STATIC_CURVE);
     CRect rcWnd;
     pWnd->GetClientRect(&rcWnd);
