@@ -78,6 +78,9 @@
     <ClInclude Include="CurveFileLoader.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="GdiMemDC.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LFW20170614.cpp">
@@ -108,6 +111,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="CurveFileLoader.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="GdiMemDC.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

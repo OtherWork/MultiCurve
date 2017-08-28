@@ -35,7 +35,7 @@ public:
     * @param: int color 线条颜色
     * @returns:   void
     */
-    void setParam(LPCTSTR strName, int width, int height, int sampleTimes, double minVal, double maxVal, int color);
+    void setParam(LPCTSTR strName, int width, int height, int sampleTimes,  int color);
 
     //添加数据点
     void add(double val);
@@ -43,9 +43,16 @@ public:
     //清空全部数据
     void clear();
     //绘制曲线
-    void DrawCure(CDC *pDC, int offsetX);
+    void DrawCure(CDC *pDC, int offsetX, double minRange, double maxRange);
+
+    void DrawLegend(CDC *pDC, int x, int y);
 
     //计算需要的宽度.
     int getNeedWidth(int &pointWidth);
+
+    double getRange();
+
+    double getMaxRange();
+    void calcRange(double &minRange, double &maxRange);
 };
 

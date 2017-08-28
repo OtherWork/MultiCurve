@@ -16,6 +16,7 @@
 #endif
 #include "Curve.h"
 #include "CurveFileLoader.h"
+#include "GdiMemDC.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -27,6 +28,9 @@
 const int WM_UPDATE_UI = WM_USER + 10;
 
 #define  SPACE_WIDTH  20
+
+const int curveCount = 3;
+const int colors[curveCount] = {0xFFEE3932, 0xFFED23F3, 0xFF347C24}; //三条线的颜色
 
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
@@ -217,7 +221,7 @@ BOOL CLFW20170614Dlg::OnInitDialog()
 
 
     SetDlgItemText(IDC_EDIT_SEND, TEXT("45.875")); //初始化发送编辑框数值.
-
+    SetDlgItemText(IDC_EDIT_SampleTimes, TEXT("100"));
 
 
 #ifdef RUN_TEST_SERVER
@@ -624,21 +628,8 @@ LRESULT CLFW20170614Dlg::OnMyUpdateUI(WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-/**
-* Method:    drawXY
-* FullName:  CLFW20170614Dlg::drawXY
-* Access:    protected
-* Qualifier:
-* @param: CDC * pDC
-* @param: int width 绘制区域宽度
-* @param: int height 绘制区域高度
-* @param: int xUnits  横坐标总单位数(分成多少格)
-* @param: int yUnits 纵坐标总单位数(分成格数)
-* @param: int offsetX x方向偏移
-* @returns:   void
-*/
-//坐标系统根据多条曲线y方向范围最大值来计算刻度单位.   返回值可能需要写成 像素单位比值(小数). 在坐标右侧绘制图例
-void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int yUnits, int offsetX)
+
+void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height,  double minVal, double maxValue, int offsetX)
 {
     int orginOffsetX = 30;
     int orginOffsetY = 10;
@@ -662,7 +653,6 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
     width -= orginOffsetX + margin;
     height -= orginOffsetY + margin;
 
-
     pDC->SetBkMode(TRANSPARENT);
     //绘制x方向---每10个像素为100ms
     for(int x = 10 + offsetX; x < width - offsetX; x += 10)
@@ -678,7 +668,7 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
         if(addx > 0)
         {
             CString tStr;
-            tStr.Format(TEXT("%d"), (x - offsetX) / 10);
+            tStr.Format(TEXT("%d"), (x - offsetX) * 10);
             CRect rcArea ;
             pDC->DrawText(tStr, &rcArea, DT_CENTER | DT_CALCRECT);
             rcArea.OffsetRect(x + orginOffsetX - rcArea.Width() / 2, height);
@@ -687,11 +677,12 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
 
     }
 
-    int val = yUnits - xUnits;
-    if(val == 0)
+    double val = maxValue - minVal;
+    if(val < 1 && val > -1)
     {
         val = 1;
     }
+
     if(val > height)
     {
         val = height;
@@ -700,7 +691,7 @@ void CLFW20170614Dlg::drawXY(CDC * pDC, int width, int height, int xUnits, int y
     double perPixel = (double)val / (double)height;
 
     //绘制y方向----根据最大值,最小值计算单位
-    for(int y = 10; y < height; y += 10)
+    for(int y = 10; y < height - margin; y += 10)
     {
         int addy = ((y % 100) == 0) ? margin : 0;
         pDC->MoveTo(orginOffsetX,  height - y);
@@ -728,38 +719,48 @@ void CLFW20170614Dlg::drawCurve()
     pWnd->GetClientRect(&rcWnd);
     CDC *pDC = pWnd -> GetDC();
 
-    CDC cdc;
-    cdc.CreateCompatibleDC(pDC);
-
-    CBitmap bmp;
-    bmp.CreateCompatibleBitmap(pDC, rcWnd.Width(), rcWnd.Height());
-    CBitmap *pOld = cdc.SelectObject(&bmp);
-    //绘制背景
-    cdc.FillSolidRect(0, 0, rcWnd.Width(), rcWnd.Height(), RGB(0xF0, 0xF0, 0xF0));
-
-
-    //绘制坐标系
-    drawXY(&cdc , rcWnd.Width(), rcWnd.Height(), 0, 200, mOffsetX);
+    int iWidth = rcWnd.Width();
+    int iHeight = rcWnd.Height();
+    CGdiMemDC memDC;
+    memDC.create(pDC, rcWnd.Width(), rcWnd.Height());
 
     BOOL isShowStatic  = BST_CHECKED == IsDlgButtonChecked(IDC_ShowStatic);
+    vector<CCurve> *pCurves = isShowStatic ? &mStaticCurves : &mCurves;
+    vector<CCurve> &curves = *pCurves;
 
-    int curveCount = isShowStatic ? mStaticCurves.size() : mCurves.size();
+    //计算最大值域
+    int curveCount = curves.size();
+    double maxRange = 0;
+    for(int i = 0; i < curveCount; ++i)
+    {
+        maxRange = max(curves[i].getMaxRange(), maxRange);
+    }
+    maxRange += 50; //预留,以免全部曲线都顶得很高.
+
+    //绘制背景
+    memDC.FillSolidRect(0, 0, rcWnd.Width(), rcWnd.Height(), RGB(0xF0, 0xF0, 0xF0));
+
+    //绘制坐标系
+    drawXY(&memDC , rcWnd.Width(), rcWnd.Height(), 0, maxRange, mOffsetX);
+
+
+
+
     //绘制曲线
     for(int i = 0; i < curveCount; ++i)
     {
-        if(isShowStatic) //静态曲线
-        {
-            mStaticCurves[i].DrawCure(&cdc, mOffsetX);
-        }
-        else //动态曲线
-        {
-            mCurves[i].DrawCure(&cdc, mOffsetX);
-        }
+        curves[i].DrawCure(&memDC, mOffsetX, 0, maxRange);
+        curves[i].DrawLegend(&memDC, rcWnd.Width() - 100, i * 20 + 50);
     }
 
-    pDC->BitBlt(0, 0, rcWnd.Width(), rcWnd.Height(), &cdc, 0, 0, SRCCOPY);
+    //绘制图例:
+    for(int i = 0; i < curveCount; ++i)
+    {
+        curves[i].DrawCure(&memDC, mOffsetX, 0, maxRange);
+    }
 
-    cdc.SelectObject(pOld);
+
+    pDC->BitBlt(0, 0, rcWnd.Width(), rcWnd.Height(), &memDC, 0, 0, SRCCOPY);
 
     pWnd->ReleaseDC(pDC);
 }
@@ -830,21 +831,27 @@ void CLFW20170614Dlg::OnBnClickedButton8()
         MessageBox(TEXT("请输入时间"));
         return;
     }
-    vector<vector<double>> datas;
+    int accTimes = GetDlgItemInt(IDC_EDIT_SampleTimes);
+    CRect rcWnd;
+    GetDlgItem(IDC_STATIC_CURVE)->GetWindowRect(&rcWnd);
+    int iWidth = rcWnd.Width();
+    int iHeight = rcWnd.Height();
+
+    vector<ItemData> datas;
     mStaticCurves.clear();
     if(CCurveFileLoader::load(datas, strTime))
     {
-        const int curveCount = 3;
-        int colors[curveCount] = {0xFFEE3932, 0xFFED23F3, 0xFF347C24}; //三条线的颜色
-        CCurve cure;
-        //文件名......
         mOffsetX = 0;
-        int curveSize = sizeof(mStaticCurves) / sizeof(CCurve);
         int nCount = datas.size();
-        nCount = min(curveSize, nCount);
         for(int i = 0; i < nCount; ++i)
         {
-            mStaticCurves[i].replace(datas[i]);
+            ItemData &item = datas[i];
+            CCurve curve;
+            curve.replace(item.mDatas);
+            curve.setParam(item.mFileName, iWidth, iHeight,
+                           item.mFileName.CompareNoCase(TEXT("acc")) == 0 ? accTimes : 100, colors[i % curveCount]);
+
+            mStaticCurves.push_back(curve);
         }
         drawCurve();
     }
@@ -865,16 +872,36 @@ void CLFW20170614Dlg::initCurve()
     CRect rcWnd;
     pWnd->GetClientRect(&rcWnd);
     //目前只有三条曲线.
-    const int curveCount = 3;
-    int colors[curveCount] = {0xFFEE3932, 0xFFED23F3, 0xFF347C24}; //三条线的颜色
     CString fileName[curveCount] = {TEXT("acc"), TEXT("VibraForce"), TEXT("longPress")}; //三条曲线保存的文件名字
     for(int i = 0; i < curveCount; ++i)
     {
         CCurve cure;
-        cure.setParam(fileName[i], rcWnd.Width(), rcWnd.Height(), 100, 0, 200, colors[i]);
+        cure.setParam(fileName[i], rcWnd.Width(), rcWnd.Height(), 100,  colors[i]);
         mCurves.push_back(cure);
         CCurveFileSaver saver;
         saver.setFileName(fileName[i]);
         mSavers.push_back(saver);
     }
+}
+
+double CLFW20170614Dlg::calcMaxRange()
+{
+    vector<CCurve> *pCurves = &mCurves;
+    if(BST_CHECKED == IsDlgButtonChecked(IDC_ShowStatic))
+    {
+        pCurves = &mStaticCurves;
+    }
+
+    vector<CCurve> curves = *pCurves;
+    int nCount = curves.size();
+    double range = 0;
+    for(int i = 0; i < nCount; ++i)
+    {
+        range = max(curves[i].getRange(), range);
+    }
+    if(nCount == 0)
+    {
+        range = 200;
+    }
+    return range;
 }

@@ -4,7 +4,9 @@
 
 CCurve::CCurve(void)
 {
-    setParam(TEXT(""), 100, 100, 100, 0, 200, 0xFF000000);
+    mRangeMin = 99999;
+    mRangeMax = 0;
+    setParam(TEXT(""), 100, 100, 100, 0xFF000000);
 }
 
 
@@ -17,6 +19,7 @@ void CCurve::replace(vector<double>&datas)
 {
     mDatas.clear();
     mDatas = datas;
+    calcRange(mRangeMin, mRangeMax);
 }
 
 int CCurve::getColor()
@@ -29,7 +32,7 @@ LPCTSTR CCurve::getName()
     return mName;
 }
 
-void CCurve::setParam(LPCTSTR strName, int width, int height, int sampleTimes, double minVal, double maxVal, int color)
+void CCurve::setParam(LPCTSTR strName, int width, int height, int sampleTimes,  int color)
 {
     mWidth = width;
     mHeight = height;
@@ -38,8 +41,6 @@ void CCurve::setParam(LPCTSTR strName, int width, int height, int sampleTimes, d
     {
         mSpaceWidth = 1;
     }
-    mRangeMin = minVal;
-    mRangeMax = maxVal;
     mColor  = color;
     mName = strName;
 }
@@ -48,6 +49,8 @@ void CCurve::setParam(LPCTSTR strName, int width, int height, int sampleTimes, d
 void CCurve::add(double val)
 {
     mDatas.push_back(val);
+    mRangeMin = min(mRangeMin, val);
+    mRangeMax = max(mRangeMax, val);
 }
 
 void CCurve::clear()
@@ -55,7 +58,7 @@ void CCurve::clear()
     mDatas.clear();
 }
 
-void CCurve::DrawCure(CDC *pDC, int offsetX)
+void CCurve::DrawCure(CDC *pDC, int offsetX, double minRange, double maxRange)
 {
     int originOffsetX = 30;
     int originOffsetY = 10;
@@ -66,7 +69,7 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
     }
 
     Graphics gp(pDC->m_hDC);
-    Color clr((mColor & 0x00FFFFFF) | 0xee000000);
+    Color clr(mColor);
     Pen pen(clr); //坐标点颜色
 
     gp.SetSmoothingMode(SmoothingModeHighQuality); //平滑模式
@@ -83,7 +86,7 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
         }
     }
 
-    double range = mRangeMax - mRangeMin; //计算值区间宽度
+    double range = maxRange - minRange; //计算值区间宽度
     int maxPtCount = mWidth / mSpaceWidth + 2;
     len -= startIndex;
     maxPtCount = min(len, maxPtCount);
@@ -109,13 +112,51 @@ void CCurve::DrawCure(CDC *pDC, int offsetX)
     }
 
     //绘制曲线函数
-    gp.DrawCurve(&pen, pts.data(), pts.size(), 0.3f);
+    gp.DrawCurve(&pen, pts.data(), pts.size(), 0.5f);
 
+}
+
+void CCurve::DrawLegend(CDC *pDC, int x, int y)
+{
+    BYTE *buf = (BYTE*)&mColor;
+    pDC->FillSolidRect(x - 4, y - 4, 8, 8, RGB(buf[2], buf[1], buf[0]));
+    CRect rcText;
+    pDC->DrawText(mName, &rcText, DT_CALCRECT);
+    CRect rcDraw(x + 8, y - rcText.Height() / 2, x + 8 + rcText.Width(), y + rcText.Height() / 2);
+    pDC->DrawText(mName, &rcDraw, DT_CENTER);
 }
 
 int CCurve::getNeedWidth(int &pointWidth)
 {
     pointWidth = mSpaceWidth;
     return mDatas.size() * mSpaceWidth;
+}
+
+double CCurve::getRange()
+{
+    return mRangeMax - mRangeMin;
+}
+
+double CCurve::getMaxRange()
+{
+    return mRangeMax;
+}
+
+void CCurve::calcRange(double &minRange, double &maxRange)
+{
+    int nCount = mDatas.size();
+    if(nCount == 0)
+    {
+        minRange = 0;
+        maxRange = 0;
+        return ;
+    }
+    minRange = 99999999;
+    maxRange = 0;
+    for(int i = 0; i < nCount; ++i)
+    {
+        minRange = min(mDatas[i], minRange);
+        maxRange = max(maxRange, mDatas[i]);
+    }
 }
 

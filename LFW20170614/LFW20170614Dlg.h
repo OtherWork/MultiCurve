@@ -39,13 +39,15 @@ protected:
     int mLastOffsetX;
     BOOL mIsCapture;
     CPoint mLastPoint;
-    void drawXY(CDC *pDC, int width, int height, int xUnits, int yUnits, int offsetX);
+    void drawXY(CDC *pDC, int width, int height, double minVal, double maxValue, int offsetX);
     void drawCurve();
 
     vector<CCurve> mCurves;//三条动态曲线
     vector<CCurve> mStaticCurves;//三条静态曲线;
     vector<CCurveFileSaver> mSavers; //文件保存器
     void initCurve();
+
+    double calcMaxRange();
 
 private:
     CFont m_Font;

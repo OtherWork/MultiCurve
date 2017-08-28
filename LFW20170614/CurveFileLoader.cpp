@@ -11,7 +11,7 @@ CCurveFileLoader::~CCurveFileLoader(void)
 {
 }
 
-BOOL CCurveFileLoader::load(vector<vector<double>> &datas, LPCTSTR strTime)
+BOOL CCurveFileLoader::load(vector<ItemData> &datas, LPCTSTR strTime)
 {
     datas.clear();
 
@@ -48,21 +48,36 @@ BOOL CCurveFileLoader::load(vector<vector<double>> &datas, LPCTSTR strTime)
     int len = files.size();
     for(int i = 0; i < len; ++i)
     {
+        CString strFile = files[i];
         FILE *pFile = NULL;
-        _tfopen_s(&pFile, files[i], TEXT("rb"));
+        _tfopen_s(&pFile, strFile, TEXT("rb"));
         if(pFile)
         {
             char buf[0x100] = {0};
-            vector<double> vals;
+            ItemData item;
+            //取出文件自定义名字
+            int index = strFile.ReverseFind('.');
+            if(index > 0)
+            {
+                strFile = strFile.Left(index);
+            }
+            index = strFile.ReverseFind('_');
+            if(index > 0)
+            {
+                strFile = strFile.Right(strFile.GetLength() - index - 1);
+            }
+            item.mFileName = strFile;
+
+            //解析数据(每行一个数据)
             while(fgets(buf, 0x100, pFile) != NULL)
             {
                 double val = atof(buf);
-                vals.push_back(val);
+                item.mDatas.push_back(val);
                 memset(buf, 0, 0x100);
             }
 
             fclose(pFile);
-            datas.push_back(vals);
+            datas.push_back(item);
         }
     }
 
